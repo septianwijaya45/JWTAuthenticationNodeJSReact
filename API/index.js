@@ -1,3 +1,4 @@
+const { response, json } = require("express");
 const express = require("express");
 const app = express();
 const jwt = require("jsonwebtoken");
@@ -18,6 +19,54 @@ const users = [
   },
 ];
 
+let refreshTokens = [];
+
+app.post("/api/refresh", (req, res) => {
+  // take the reflesh token from the user
+  const refreshToken = req.body.token;
+  // send error if there is no token or it's valid
+  if (!refreshToken) return res.status(401).json("You are not authenticated!");
+  if (!refreshTokens.includes(refreshToken)) {
+    return res.status(403).json("Refresh Token Is Not Valid!");
+  }
+  jwt.verify(refreshToken, "myRefreshSecretKey", (err, user) => {
+    err && console.log(err);
+    refreshTokens = refreshTokens.filter((token) => token !== refreshToken);
+
+    const newAccessToken = generateAccessToken(user);
+    const newRefreshToken = generateRefreshToken(user);
+
+    refreshTokens.push(newRefreshToken);
+
+    res.status(200).json({
+      accessToken: newAccessToken,
+      refreshToken: newRefreshToken,
+    });
+  });
+  // if everything is ok, create new access token, refresh token and send to user
+});
+
+const generateAccessToken = (user) => {
+  return jwt.sign(
+    {
+      id: user.id,
+      isAdmin: user.isAdmin,
+    },
+    "mySecretKey",
+    { expiresIn: "20s" } // can s (second), m (minute)
+  );
+};
+
+const generateRefreshToken = (user) => {
+  return jwt.sign(
+    {
+      id: user.id,
+      isAdmin: user.isAdmin,
+    },
+    "myRefreshSecretKey"
+  );
+};
+
 app.post("/api/login", (req, res) => {
   const { username, password } = req.body;
   const user = users.find((u) => {
@@ -26,19 +75,17 @@ app.post("/api/login", (req, res) => {
 
   if (user) {
     // Generate Token
-    const accessToken = jwt.sign(
-      {
-        id: user.id,
-        isAdmin: user.isAdmin,
-      },
-      "mySecretKey"
-    );
+    const accessToken = generateAccessToken(user);
+    const refreshToken = generateRefreshToken(user);
+
+    refreshTokens.push(refreshToken);
 
     res.json({
       id: user.id,
       username: user.username,
       isAdmin: user.isAdmin,
-      token: accessToken,
+      accessToken,
+      refreshToken,
     });
   } else {
     res.status(400).json("Username & Password Incorrect");
