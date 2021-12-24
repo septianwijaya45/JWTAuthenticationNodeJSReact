@@ -35,6 +35,7 @@ app.post("/api/login", (req, res) => {
     );
 
     res.json({
+      id: user.id,
       username: user.username,
       isAdmin: user.isAdmin,
       token: accessToken,
@@ -61,6 +62,14 @@ const verify = (req, res, next) => {
     res.status(401).json("You Are Not Authenticated!");
   }
 };
+
+app.delete("/api/users/:userId", verify, (req, res) => {
+  if (req.user.id === req.params.userId || req.user.isAdmin) {
+    res.status(200).json("User has been deleted!");
+  } else {
+    res.status(403).json("You are not allowed to delete this user!");
+  }
+});
 
 app.listen(5000, () => {
   console.log(`Backend is running on port 5000`);
