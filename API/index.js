@@ -53,7 +53,7 @@ const generateAccessToken = (user) => {
       isAdmin: user.isAdmin,
     },
     "mySecretKey",
-    { expiresIn: "20s" } // can s (second), m (minute)
+    { expiresIn: "20m" } // can s (second), m (minute)
   );
 };
 
@@ -116,6 +116,13 @@ app.delete("/api/users/:userId", verify, (req, res) => {
   } else {
     res.status(403).json("You are not allowed to delete this user!");
   }
+});
+
+app.post("/api/logout", verify, (req, res) => {
+  const refreshToken = req.body.token;
+  refreshTokens = refreshTokens.filter((token) => token !== refreshToken);
+
+  res.status(200).json("You Logged Out Successfully!");
 });
 
 app.listen(5000, () => {
